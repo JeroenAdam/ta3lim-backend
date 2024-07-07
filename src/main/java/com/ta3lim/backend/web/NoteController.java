@@ -2,7 +2,8 @@ package com.ta3lim.backend.web;
 
 import com.ta3lim.backend.domain.Note;
 import com.ta3lim.backend.service.NoteService;
-import com.ta3lim.backend.web.errors.NoteNotFoundException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -11,9 +12,10 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/notes")
+@RequestMapping("/api/v1/notes")
 public class NoteController {
 
+    private static final Logger logger = LoggerFactory.getLogger(NoteController.class);
     private final NoteService noteService;
 
     @Autowired
@@ -23,29 +25,34 @@ public class NoteController {
 
     @GetMapping
     public List<Note> getAllNotes() {
+        logger.info("GET /notes - Retrieving all notes");
         return noteService.getAllNotes();
     }
 
     @GetMapping("/{id}")
     public ResponseEntity<Note> getNoteById(@PathVariable Long id) {
+        logger.info("GET /notes/{} - Retrieving note with id {}", id, id);
         Note note = noteService.getNoteById(id);
         return new ResponseEntity<>(note, HttpStatus.OK);
     }
 
     @PostMapping
     public ResponseEntity<Note> addNote(@RequestBody Note note) {
+        logger.info("POST /notes - Adding new note: {}", note);
         Note created = noteService.addNote(note);
         return new ResponseEntity<>(created, HttpStatus.CREATED);
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<Note> updateNote(@PathVariable Long id, @RequestBody Note updatedNote) {
+        logger.info("PUT /notes/{} - Updating note with id {}: {}", id, id, updatedNote);
         Note updated = noteService.updateNoteById(id, updatedNote);
         return new ResponseEntity<>(updated, HttpStatus.OK);
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteNoteById(@PathVariable Long id) {
+        logger.info("DELETE /notes/{} - Deleting note with id {}", id, id);
         noteService.deleteNoteById(id);
         return new ResponseEntity<>(HttpStatus.NO_CONTENT);
     }
