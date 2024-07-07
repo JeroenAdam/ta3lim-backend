@@ -1,16 +1,23 @@
 package com.ta3lim.backend.domain;
 
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import org.springframework.data.annotation.Id;
+
 import java.util.Objects;
 
+@Entity
 public class Note {
+    @jakarta.persistence.Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     private String title;
     private String content;
 
     public Note() {}
 
-    public Note(Long id, String title, String content) {
-        this.id = id;
+    public Note(String title, String content) {
         this.title = title;
         this.content = content;
     }
