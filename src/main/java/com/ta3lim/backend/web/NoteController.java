@@ -5,10 +5,12 @@ import com.ta3lim.backend.service.NoteService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.net.URI;
 import java.util.List;
 
 @RestController
@@ -17,6 +19,9 @@ public class NoteController {
 
     private static final Logger logger = LoggerFactory.getLogger(NoteController.class);
     private final NoteService noteService;
+
+    @Value("${app.public-url}")
+    private String publicUrl;
 
     @Autowired
     public NoteController(NoteService noteService) {
@@ -40,7 +45,10 @@ public class NoteController {
     public ResponseEntity<Note> addNote(@RequestBody Note note) {
         logger.info("POST /notes - Adding new note: {}", note);
         Note created = noteService.addNote(note);
-        return new ResponseEntity<>(created, HttpStatus.CREATED);
+        URI location = URI.create(String.format(publicUrl+"/api/v1/notes/%s", created.getId()));
+        return ResponseEntity.created(location)
+                .header("X-Note", "Note successfully created")
+                .body(created);
     }
 
     @PutMapping("/{id}")
