@@ -40,12 +40,11 @@ public class NoteService {
         }
     }
 
-    public Note deleteNoteById(Long id) {
+    public void deleteNoteById(Long id) {
         if (noteRepository.existsById(id)) {
             noteRepository.deleteById(id);
         } else {
             throw new NoteNotFoundException(id);
         }
-        return null;
     }
 }
