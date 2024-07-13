@@ -5,6 +5,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import org.springframework.data.annotation.Id;
 
+import java.time.LocalDate;
 import java.util.Objects;
 
 @Entity
@@ -14,7 +15,7 @@ public class Note {
     private Long id;
     private String title;
     private String content;
-
+    private LocalDate updateDate;
     public Note() {}
 
     public Note(String title, String content) {
@@ -45,6 +46,9 @@ public class Note {
     public void setContent(String content) {
         this.content = content;
     }
+
+    public LocalDate getUpdateDate() { return updateDate; }
+    public void setUpdateDate(LocalDate updateDate) { this.updateDate = updateDate; }
 
     @Override
     public boolean equals(Object o) {

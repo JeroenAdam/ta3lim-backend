@@ -15,6 +15,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1/notes")
+@CrossOrigin(origins = "http://localhost:3000")
 public class NoteController {
 
     private static final Logger logger = LoggerFactory.getLogger(NoteController.class);
