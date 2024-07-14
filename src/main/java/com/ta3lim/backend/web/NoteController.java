@@ -1,6 +1,7 @@
 package com.ta3lim.backend.web;
 
 import com.ta3lim.backend.domain.Note;
+import com.ta3lim.backend.domain.Tag;
 import com.ta3lim.backend.service.NoteService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -42,7 +43,7 @@ public class NoteController {
         return new ResponseEntity<>(note, HttpStatus.OK);
     }
 
-    @PostMapping
+/*    @PostMapping
     public ResponseEntity<Note> addNote(@RequestBody Note note) {
         logger.info("POST /notes - Adding new note: {}", note);
         Note created = noteService.addNote(note);
@@ -50,6 +51,11 @@ public class NoteController {
         return ResponseEntity.created(location)
                 .header("X-Note", "Note successfully created")
                 .body(created);
+    }
+*/
+    @PostMapping
+    public Note createNote(@RequestBody Note note) {
+        return noteService.createNoteWithTags(note, note.getTags());
     }
 
     @PutMapping("/{id}")

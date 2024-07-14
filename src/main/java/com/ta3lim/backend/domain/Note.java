@@ -1,11 +1,11 @@
 package com.ta3lim.backend.domain;
 
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
+import com.fasterxml.jackson.annotation.JsonManagedReference;
+import jakarta.persistence.*;
 import org.springframework.data.annotation.Id;
 
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Objects;
 
 @Entity
@@ -16,6 +16,11 @@ public class Note {
     private String title;
     private String content;
     private LocalDate updateDate;
+
+    @OneToMany(mappedBy = "note", cascade = CascadeType.ALL, orphanRemoval = true)
+    @JsonManagedReference
+    private List<Tag> tags;
+
     public Note() {}
 
     public Note(String title, String content) {
@@ -49,6 +54,15 @@ public class Note {
 
     public LocalDate getUpdateDate() { return updateDate; }
     public void setUpdateDate(LocalDate updateDate) { this.updateDate = updateDate; }
+
+    // Getter and setter for tags
+    public List<Tag> getTags() {
+        return tags;
+    }
+
+    public void setTags(List<Tag> tags) {
+        this.tags = tags;
+    }
 
     @Override
     public boolean equals(Object o) {
