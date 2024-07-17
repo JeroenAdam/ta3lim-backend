@@ -21,9 +21,12 @@
         }
 
         public static Authentication getAuthentication(HttpServletRequest request) {
+            String uri = request.getRequestURI();
             String apiKey = request.getHeader(AUTH_TOKEN_HEADER_NAME);
             if (apiKey == null || !apiKey.equals(authToken)) {
+                if (!uri.contains("/images/")) {
                 throw new BadCredentialsException("Invalid API Key");
+                }
             }
             return new ApiKeyAuthentication(apiKey, AuthorityUtils.NO_AUTHORITIES);
         }
