@@ -17,6 +17,15 @@ public class ScheduledTasks {
     private static String extStorageUser;
     private static String extStoragePassword;
 
+    @Value("${app.tasks.runDbDump.enabled}")
+    private String runDbDumpEnabled;
+
+    @Value("${app.tasks.runPushDbDumpToCloud.enabled}")
+    private String runPushDbDumpToCloudEnabled;
+
+    @Value("${app.tasks.runPushUploadsToCloud.enabled}")
+    private String runPushUploadsToCloudEnabled;
+
     @Value("${spring.datasource.username}")
     public void setDbUser(String dbUser) { ScheduledTasks.dbUser = dbUser;}
 
@@ -31,34 +40,40 @@ public class ScheduledTasks {
 
     @Scheduled(fixedRate = 3600000, initialDelay = 3600000) // every 1h
     public void runDbDump() {
-        try {
-            String command="cd \"C:\\Program Files\\MySQL\\MySQL Server 9.0\\bin\" && mysqldump -u "+dbUser+" -p"+dbPassword+" ta3lim > c:\\dumps\\pkms.sql";
-            int exitCode = commandRunner(command);
-            System.out.println("runDbDump exited with code: " + exitCode);
-        } catch (Exception e) {
-            e.printStackTrace();
+        if (runDbDumpEnabled.equals("true")) {
+            try {
+                String command="cd \"C:\\Program Files\\MySQL\\MySQL Server 9.0\\bin\" && mysqldump -u "+dbUser+" -p"+dbPassword+" --no-tablespaces ta3lim > c:\\dumps\\pkms.sql";
+                int exitCode = commandRunner(command);
+                System.out.println("runDbDump exited with code: " + exitCode);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
         }
     }
 
     @Scheduled(fixedRate = 3600000, initialDelay = 3660000) // every 1 hour, 1 minute after runDbDump
     public void runPushDbDumpToCloud() {
-        try {
-            String command = "powershell.exe $dateTime = Get-Date -Format \"yyyy-MM-dd-HH-mm\"; megatools put -u "+extStorageUser+" -p "+extStoragePassword+" --path /Root/dbdump/pkms-$dateTime.sql C:\\dumps\\pkms.sql";
-            int exitCode = commandRunner(command);
-            System.out.println("runPushDbDumpToCloud exited with code: " + exitCode);
-        } catch (Exception e) {
-            e.printStackTrace();
+        if (runPushDbDumpToCloudEnabled.equals("true")) {
+            try {
+                String command = "powershell.exe $dateTime = Get-Date -Format \"yyyy-MM-dd-HH-mm\"; megatools put -u "+extStorageUser+" -p "+extStoragePassword+" --path /Root/dbdump/pkms-$dateTime.sql C:\\dumps\\pkms.sql";
+                int exitCode = commandRunner(command);
+                System.out.println("runPushDbDumpToCloud exited with code: " + exitCode);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
         }
     }
 
     @Scheduled(fixedRate = 43200000, initialDelay = 3720000) // every 12h or 1h02m after startup
-        public void runPushUploadsToCloud() {
-        try {
-            String command = "megatools copy -u "+extStorageUser+" -p "+extStoragePassword+" -r /Root/uploads -l C:\\uploads";
-            int exitCode = commandRunner(command);
-            System.out.println("runPushUploadsToCloud exited with code: " + exitCode);
-        } catch (Exception e) {
-            e.printStackTrace();
+    public void runPushUploadsToCloud() {
+        if (runPushUploadsToCloudEnabled.equals("true") ) {
+            try {
+                String command = "megatools copy -u "+extStorageUser+" -p "+extStoragePassword+" -r /Root/uploads -l C:\\uploads";
+                int exitCode = commandRunner(command);
+                System.out.println("runPushUploadsToCloud exited with code: " + exitCode);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
         }
     }
 

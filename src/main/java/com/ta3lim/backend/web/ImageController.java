@@ -17,13 +17,12 @@ import java.util.Optional;
 import java.util.UUID;
 
 @RestController
-@CrossOrigin(origins = "http://localhost:3000")
 public class ImageController {
 
-    @Value("${app.public-url}")
-    private String publicUrl;
+    @Value("${app.public-api}")
+    private String publicApi;
 
-    private static final String UPLOAD_DIR = "\\\\WIN-RBHFRI5H0S6\\c$\\uploads";
+    private static final String UPLOAD_DIR = "C:\\uploads";
 
     private final ImageRepository imageRepository;
 
@@ -41,7 +40,7 @@ public class ImageController {
         Files.copy(image.getInputStream(), imagePath);
         Image img = new Image(imageName);
         imageRepository.save(img);
-        return publicUrl + "/images/" + imageName;
+        return publicApi + "/images/" + imageName;
     }
 
     @GetMapping("/images/{fileName}")

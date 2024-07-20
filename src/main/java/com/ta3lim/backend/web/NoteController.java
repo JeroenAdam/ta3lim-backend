@@ -16,14 +16,14 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1/notes")
-@CrossOrigin(origins = "http://localhost:3000")
 public class NoteController {
 
     private static final Logger logger = LoggerFactory.getLogger(NoteController.class);
-    private final NoteService noteService;
 
-    @Value("${app.public-url}")
-    private String publicUrl;
+    // @Value("${app.public-url}") At the moment not needed, linked with commented PostMapping
+    // private String publicUrl;
+
+    private final NoteService noteService;
 
     @Autowired
     public NoteController(NoteService noteService) {

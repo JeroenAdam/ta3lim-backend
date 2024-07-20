@@ -14,6 +14,7 @@ public class Note {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     private String title;
+    @Lob @Column(length = 65536)
     private String content;
     private LocalDate updateDate;
 
