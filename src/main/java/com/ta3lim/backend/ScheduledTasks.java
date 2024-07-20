@@ -26,6 +26,12 @@ public class ScheduledTasks {
     @Value("${app.tasks.runPushUploadsToCloud.enabled}")
     private String runPushUploadsToCloudEnabled;
 
+    @Value("${app.tasks.runDbDump.dbName}")
+    private String dbName;
+
+    @Value("${app.tasks.runDbDump.dbPort}")
+    private String dbPort;
+
     @Value("${spring.datasource.username}")
     public void setDbUser(String dbUser) { ScheduledTasks.dbUser = dbUser;}
 
@@ -42,7 +48,7 @@ public class ScheduledTasks {
     public void runDbDump() {
         if (runDbDumpEnabled.equals("true")) {
             try {
-                String command="cd \"C:\\Program Files\\MySQL\\MySQL Server 9.0\\bin\" && mysqldump -u "+dbUser+" -p"+dbPassword+" --no-tablespaces ta3lim > c:\\dumps\\pkms.sql";
+                String command="cd \"C:\\Program Files\\MySQL\\MySQL Server 9.0\\bin\" && mysqldump -u "+dbUser+" -p"+dbPassword+" -P "+dbPort+" --no-tablespaces "+dbName+" > c:\\dumps\\pkms.sql";
                 int exitCode = commandRunner(command);
                 System.out.println("runDbDump exited with code: " + exitCode);
             } catch (Exception e) {
