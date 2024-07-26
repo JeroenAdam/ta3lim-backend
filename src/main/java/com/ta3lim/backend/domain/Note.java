@@ -1,33 +1,32 @@
 package com.ta3lim.backend.domain;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
-import org.springframework.data.annotation.Id;
-
-import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Objects;
 
 @Entity
 public class Note {
-    @jakarta.persistence.Id
+    @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
     private String title;
-    @Lob @Column(length = 65536)
     private String content;
-    private LocalDate updateDate;
+    private LocalDateTime updateDate;
 
     @OneToMany(mappedBy = "note", cascade = CascadeType.ALL, orphanRemoval = true)
     @JsonManagedReference
     private List<Tag> tags;
 
-    public Note() {}
+    @OneToMany(mappedBy = "referrer", cascade = CascadeType.ALL, orphanRemoval = true)
+    @JsonIgnore
+    private List<Links> links;
 
-    public Note(String title, String content) {
-        this.title = title;
-        this.content = content;
-    }
+    @OneToMany(mappedBy = "referred", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Links> linked;
 
     public Long getId() {
         return id;
@@ -53,16 +52,36 @@ public class Note {
         this.content = content;
     }
 
-    public LocalDate getUpdateDate() { return updateDate; }
-    public void setUpdateDate(LocalDate updateDate) { this.updateDate = updateDate; }
+    public LocalDateTime getUpdateDate() {
+        return updateDate;
+    }
 
-    // Getter and setter for tags
+    public void setUpdateDate(LocalDateTime updateDate) {
+        this.updateDate = updateDate;
+    }
+
     public List<Tag> getTags() {
         return tags;
     }
 
     public void setTags(List<Tag> tags) {
         this.tags = tags;
+    }
+
+    public List<Links> getLinks() {
+        return links;
+    }
+
+    public void setLinks(List<Links> links) {
+        this.links = links;
+    }
+
+    public List<Links> getLinked() {
+        return linked;
+    }
+
+    public void setLinked(List<Links> linked) {
+        this.linked = linked;
     }
 
     @Override

@@ -35,7 +35,8 @@ public class ImageController {
         if (image.isEmpty()) {
             throw new IllegalArgumentException("Image is empty");
         }
-        String imageName = UUID.randomUUID().toString() + "-" + image.getOriginalFilename();
+        String originalFilename = image.getOriginalFilename().replaceAll(" ", "_");
+        String imageName = UUID.randomUUID().toString() + "-" + originalFilename;
         Path imagePath = Paths.get(UPLOAD_DIR, imageName);
         Files.copy(image.getInputStream(), imagePath);
         Image img = new Image(imageName);
@@ -45,7 +46,8 @@ public class ImageController {
 
     @GetMapping("/images/{fileName}")
     public ResponseEntity<Resource> getImage(@PathVariable String fileName) {
-        Optional<Image> imageOptional = imageRepository.findByImagePath(fileName);
+        String sanitizedFileName = fileName.replaceAll(" ", "_");
+        Optional<Image> imageOptional = imageRepository.findByImagePath(sanitizedFileName);
 
         if (imageOptional.isPresent()) {
             Image image = imageOptional.get();
