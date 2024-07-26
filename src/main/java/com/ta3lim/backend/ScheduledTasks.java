@@ -1,16 +1,33 @@
 package com.ta3lim.backend;
 
-import com.ta3lim.backend.config.AuthenticationService;
+import com.ta3lim.backend.repository.NoteRepository;
+import com.ta3lim.backend.utils.TimestampUtil;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.event.ContextRefreshedEvent;
+import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.stereotype.Component;
 
 @Component
 public class ScheduledTasks {
+
+    @Autowired
+    private NoteRepository noteRepository;
 
     private static String dbUser;
     private static String dbPassword;
@@ -44,7 +61,13 @@ public class ScheduledTasks {
     @Value("${app.external-storage-password}")
     public void setExtStoragePassword(String extStoragePassword) { ScheduledTasks.extStoragePassword = extStoragePassword;}
 
-    @Scheduled(fixedRate = 3600000, initialDelay = 3600000) // every 1h
+    // Initialize the timestamp file at first application startup
+    @EventListener(ContextRefreshedEvent.class)
+    public void initialize() {
+        TimestampUtil.initializeTimestampFile();
+    }
+
+    @Scheduled(fixedRate = 600000, initialDelay = 600000) // every 10 min
     public void runDbDump() {
         if (runDbDumpEnabled.equals("true")) {
             try {
@@ -57,13 +80,21 @@ public class ScheduledTasks {
         }
     }
 
-    @Scheduled(fixedRate = 3600000, initialDelay = 3660000) // every 1 hour, 1 minute after runDbDump
+    @Scheduled(fixedRate = 600000, initialDelay = 60000) // every 10 min, 1 minute after runDbDump, if changes to push
     public void runPushDbDumpToCloud() {
+        LocalDateTime lastRunPushDbDumpToCloudTime = TimestampUtil.readTimestamp();
+        LocalDateTime latestNoteUpdateDateTime = getLatestNoteUpdateDateTime();
         if (runPushDbDumpToCloudEnabled.equals("true")) {
             try {
+                if (lastRunPushDbDumpToCloudTime != null && !latestNoteUpdateDateTime.isAfter(lastRunPushDbDumpToCloudTime)) {
+                    return;
+                }
                 String command = "powershell.exe $dateTime = Get-Date -Format \"yyyy-MM-dd-HH-mm\"; megatools put -u "+extStorageUser+" -p "+extStoragePassword+" --path /Root/dbdump/pkms-$dateTime.sql C:\\dumps\\pkms.sql";
                 int exitCode = commandRunner(command);
                 System.out.println("runPushDbDumpToCloud exited with code: " + exitCode);
+                if (exitCode == 0) {
+                    TimestampUtil.writeTimestamp(LocalDateTime.now());
+                }
             } catch (Exception e) {
                 e.printStackTrace();
             }
@@ -72,7 +103,7 @@ public class ScheduledTasks {
 
     @Scheduled(fixedRate = 43200000, initialDelay = 3720000) // every 12h or 1h02m after startup
     public void runPushUploadsToCloud() {
-        if (runPushUploadsToCloudEnabled.equals("true") ) {
+        if (runPushUploadsToCloudEnabled.equals("true")) {
             try {
                 String command = "megatools copy -u "+extStorageUser+" -p "+extStoragePassword+" -r /Root/uploads -l C:\\uploads";
                 int exitCode = commandRunner(command);
@@ -93,5 +124,69 @@ public class ScheduledTasks {
             System.out.println(line);
         }
         return process.waitFor();
+    }
+
+    public LocalDateTime getLatestNoteUpdateDateTime() {
+        return noteRepository.findLatestUpdateDateTime();
+    }
+
+    @Autowired
+    private ImageCleaner imageCleaner;
+
+    @EventListener(ContextRefreshedEvent.class) // at application startup
+    public void runImageCleanup() {
+        imageCleaner.cleanUnusedImages();
+    }
+
+    @Component
+    public static class ImageCleaner {
+
+        @Autowired
+        private URLExtractor urlExtractor;
+
+        @Autowired
+        private JdbcTemplate jdbcTemplate;
+
+        public void cleanUnusedImages() {
+            List<String> imagePaths = urlExtractor.extractImagePaths();
+            if (imagePaths.isEmpty()) { return; }
+            // Prepare placeholders for SQL query
+            String placeholders = imagePaths.stream()
+                    .map(path -> "'" + path + "'").collect(Collectors.joining(", "));
+            // Retrieve unused image paths from the database
+            String selectSql = "SELECT image_path FROM image WHERE image_path NOT IN (" + placeholders + ")";
+            List<String> unusedImagePaths = jdbcTemplate.queryForList(selectSql, String.class);
+            // Delete files from the filesystem
+            for (String filePath : unusedImagePaths) {
+                File file = new File("C:\\uploads\\" + filePath);
+                if (file.exists() && file.delete()) {
+                    System.out.println("Cleaned orphan file: " + filePath);
+                }
+            }
+            String deleteSql = "DELETE FROM image WHERE image_path NOT IN (" + placeholders + ")";
+            jdbcTemplate.execute(deleteSql);
+        }
+    }
+
+    @Component
+    public static class URLExtractor {
+
+        @Autowired
+        private NoteRepository noteRepository;
+
+        private static final String URL_PATTERN = "http://localhost:8080/images/([\\w\\-. \\[\\]()]+)";
+
+        public List<String> extractImagePaths() {
+            List<String> contents = noteRepository.findAllContents();
+            Pattern pattern = Pattern.compile(URL_PATTERN);
+
+            return contents.stream()
+                    .flatMap(content -> {
+                        Matcher matcher = pattern.matcher(content);
+                        return matcher.results().map(m -> m.group(1));
+                    })
+                    .distinct()
+                    .collect(Collectors.toList());
+        }
     }
 }
