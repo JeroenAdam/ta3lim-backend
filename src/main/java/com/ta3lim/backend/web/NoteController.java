@@ -1,6 +1,7 @@
 package com.ta3lim.backend.web;
 
 import com.ta3lim.backend.domain.Note;
+import com.ta3lim.backend.domain.NoteStatus;
 import com.ta3lim.backend.service.NoteService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -10,6 +11,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/v1/notes")
@@ -28,9 +30,21 @@ public class NoteController {
     }
 
     @GetMapping
-    public List<Note> getAllNotes() {
-        logger.info("GET /notes - Retrieving all notes");
-        return noteService.getAllNotes();
+    public ResponseEntity<List<Note>> getNotes(@RequestParam Optional<String> status) {
+        logger.info("GET /notes - Retrieving all notes - either DRAFT or ACTIVE");
+        List<Note> notes = null;
+        if (status.isPresent()) {
+            if (status.get().equalsIgnoreCase("DRAFT")) {
+                notes = noteService.findByStatus(NoteStatus.DRAFT);
+            } else if (status.get().equalsIgnoreCase("DELETED")) {
+                notes = noteService.findByStatus(NoteStatus.DELETED);
+            } else if (status.get().equalsIgnoreCase("ARCHIVED")) {
+                notes = noteService.findByStatus(NoteStatus.ARCHIVED);
+            }
+        } else {
+            notes = noteService.findByStatus(NoteStatus.ACTIVE);
+        }
+        return new ResponseEntity<>(notes, HttpStatus.OK);
     }
 
     @GetMapping("/{id}")
@@ -52,12 +66,12 @@ public class NoteController {
 */
     @PostMapping
     public Note createNote(@RequestBody Note note) {
-        return noteService.createNoteWithTags(note, note.getTags());
+        return noteService.createNote(note);
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<Note> updateNote(@PathVariable Long id, @RequestBody Note updatedNote) {
-        logger.info("PUT /notes/{} - Updating note with id {}: {}", id, id, updatedNote);
+        logger.info("PUT /notes/{} - Updating note with id {}: {}", id, id);
         Note updated = noteService.updateNoteById(id, updatedNote);
         return new ResponseEntity<>(updated, HttpStatus.OK);
     }

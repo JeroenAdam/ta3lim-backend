@@ -17,6 +17,10 @@ public class Note {
     private String content;
     private LocalDateTime updateDate;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private NoteStatus status = NoteStatus.ACTIVE;
+
     @OneToMany(mappedBy = "note", cascade = CascadeType.ALL, orphanRemoval = true)
     @JsonManagedReference
     private List<Tag> tags;
@@ -59,6 +63,10 @@ public class Note {
     public void setUpdateDate(LocalDateTime updateDate) {
         this.updateDate = updateDate;
     }
+
+    public NoteStatus getStatus() { return status; }
+
+    public void setStatus(NoteStatus status) { this.status = status; }
 
     public List<Tag> getTags() {
         return tags;

@@ -2,7 +2,7 @@ package com.ta3lim.backend.service;
 
 import com.ta3lim.backend.domain.Links;
 import com.ta3lim.backend.domain.Note;
-import com.ta3lim.backend.domain.Tag;
+import com.ta3lim.backend.domain.NoteStatus;
 import com.ta3lim.backend.repository.LinksRepository;
 import com.ta3lim.backend.repository.NoteRepository;
 import com.ta3lim.backend.web.errors.NoteNotFoundException;
@@ -40,12 +40,12 @@ public class NoteService {
                 .orElseThrow(() -> new NoteNotFoundException(id));
     }
 
+    public List<Note> findByStatus(NoteStatus status) {
+        return noteRepository.findByStatus(status);
+    }
+
     @Transactional
-    public Note createNoteWithTags(Note note, List<Tag> tags) {
-        for (Tag tag : tags) {
-            tag.setNote(note);
-        }
-        note.setTags(tags);
+    public Note createNote(Note note) {
         return noteRepository.save(note);
     }
 
@@ -55,6 +55,7 @@ public class NoteService {
         existingNote.setTitle(updatedNote.getTitle());
         existingNote.setContent(updatedNote.getContent());
         existingNote.setUpdateDate(updatedNote.getUpdateDate());
+        existingNote.setStatus(updatedNote.getStatus());
         existingNote.getTags().clear();
         existingNote.getTags().addAll(updatedNote.getTags());
         // Clear existing links, parse the content and create new links
