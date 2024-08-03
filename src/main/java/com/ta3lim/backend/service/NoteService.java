@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.HashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -56,8 +57,10 @@ public class NoteService {
         existingNote.setContent(updatedNote.getContent());
         existingNote.setUpdateDate(updatedNote.getUpdateDate());
         existingNote.setStatus(updatedNote.getStatus());
-        existingNote.getTags().clear();
-        existingNote.getTags().addAll(updatedNote.getTags());
+        if (updatedNote.getTags() != null) {
+            existingNote.getTags().clear();
+            existingNote.getTags().addAll(updatedNote.getTags());
+        }
         // Clear existing links, parse the content and create new links
         linksRepository.deleteAllByReferrerId(noteId);
         Pattern pattern = Pattern.compile(URL_PATTERN);
@@ -68,12 +71,14 @@ public class NoteService {
             if (referrerChain.contains(referredNoteIdLong)) {
                 continue; // Avoid infinite recursion if user links note back to note in the referrer chain
             }
-            Note referredNote = noteRepository.findById(referredNoteIdLong)
-                    .orElseThrow(() -> new NoteNotFoundException(referredNoteIdLong));
-            Links link = new Links();
-            link.setReferrer(existingNote); // Set the referrer
-            link.setReferred(referredNote);
-            linksRepository.save(link);
+            Optional<Note> referredNote = noteRepository.findById(referredNoteIdLong);
+            if (referredNote.isPresent()) {
+                Note referred = referredNote.get();
+                Links link = new Links();
+                link.setReferrer(existingNote); // Set the referrer
+                link.setReferred(referred);
+                linksRepository.save(link);
+            }
         }
         return noteRepository.save(existingNote);
     }
