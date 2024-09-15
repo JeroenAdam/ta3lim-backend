@@ -1,7 +1,16 @@
 package com.ta3lim.backend;
 
-import com.ta3lim.backend.repository.NoteRepository;
+import com.ta3lim.backend.repository.jpa.NoteRepository;
+import com.ta3lim.backend.service.NoteService;
 import com.ta3lim.backend.utils.TimestampUtil;
+import org.apache.hc.client5.http.auth.UsernamePasswordCredentials;
+import org.apache.hc.client5.http.classic.methods.HttpDelete;
+import org.apache.hc.client5.http.impl.auth.BasicCredentialsProvider;
+import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
+import org.apache.hc.client5.http.impl.classic.CloseableHttpResponse;
+import org.apache.hc.client5.http.impl.classic.HttpClients;
+import org.apache.hc.client5.http.auth.AuthScope;
+import org.apache.hc.core5.http.HttpHost;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.event.ContextRefreshedEvent;
@@ -13,21 +22,24 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.stereotype.Component;
 
 @Component
 public class ScheduledTasks {
 
     @Autowired
     private NoteRepository noteRepository;
+
+    @Autowired
+    private NoteService noteService;
 
     private static String dbUser;
     private static String dbPassword;
@@ -36,6 +48,9 @@ public class ScheduledTasks {
 
     @Value("${app.tasks.runDbDump.enabled}")
     private String runDbDumpEnabled;
+
+    @Value("${spring.application.name}")
+    private String applicationName;
 
     @Value("${app.tasks.runPushDbDumpToCloud.enabled}")
     private String runPushDbDumpToCloudEnabled;
@@ -48,6 +63,15 @@ public class ScheduledTasks {
 
     @Value("${app.tasks.runDbDump.dbPort}")
     private String dbPort;
+
+    @Value("${ELASTIC_URL}")
+    private String elasticUrl;
+
+    @Value("${spring.elasticsearch.username}")
+    private String elasticUser;
+
+    @Value("${spring.elasticsearch.password}")
+    private String elasticPassword;
 
     @Value("${spring.datasource.username}")
     public void setDbUser(String dbUser) { ScheduledTasks.dbUser = dbUser;}
@@ -63,13 +87,37 @@ public class ScheduledTasks {
 
     // Initialize the timestamp file at first application startup
     @EventListener(ContextRefreshedEvent.class)
-    public void initialize() {
+    public void initialize() throws URISyntaxException {
         TimestampUtil.initializeTimestampFile();
+        imageCleaner.cleanUnusedImages();
+        if (applicationName.equals("demo")) {
+            deleteIndex();
+            noteService.reindexAllNotes();
+        }
+    }
+
+    public void deleteIndex() throws URISyntaxException {
+        URI uri = new URI(elasticUrl);
+        String scheme = uri.getScheme();
+        String host = uri.getHost();
+        int port = uri.getPort();
+        final HttpHost targetHost = new HttpHost(scheme, host, port);
+        BasicCredentialsProvider credentialsProvider = new BasicCredentialsProvider();
+        AuthScope authScope = new AuthScope(targetHost);
+        credentialsProvider.setCredentials(authScope, new UsernamePasswordCredentials(elasticUser, elasticPassword.toCharArray()));
+        try (CloseableHttpClient httpClient = HttpClients.custom()
+                .setDefaultCredentialsProvider(credentialsProvider)
+                .build()) {
+            HttpDelete deleteRequest = new HttpDelete(targetHost + "/" + applicationName);
+            try (CloseableHttpResponse response = httpClient.execute(deleteRequest)) {
+                System.out.println("Elasticsearch index '" +applicationName+"' DELETE request response: " + response.getCode());
+            }
+        } catch (IOException e) { e.printStackTrace(); }
     }
 
     @Scheduled(fixedRate = 600000, initialDelay = 600000) // every 10 min
     public void runDbDump() {
-        if (runDbDumpEnabled.equals("true")) {
+        if (runDbDumpEnabled.equals("true") && !applicationName.equals("demo")) {
             try {
                 String command="cd \"C:\\Program Files\\MySQL\\MySQL Server 9.0\\bin\" && mysqldump -u "+dbUser+" -p"+dbPassword+" -P "+dbPort+" --no-tablespaces "+dbName+" > c:\\dumps\\pkms.sql";
                 int exitCode = commandRunner(command);
@@ -84,7 +132,7 @@ public class ScheduledTasks {
     public void runPushDbDumpToCloud() {
         LocalDateTime lastRunPushDbDumpToCloudTime = TimestampUtil.readTimestamp();
         LocalDateTime latestNoteUpdateDateTime = getLatestNoteUpdateDateTime();
-        if (runPushDbDumpToCloudEnabled.equals("true")) {
+        if (runPushDbDumpToCloudEnabled.equals("true") && !applicationName.equals("demo")) {
             try {
                 if (lastRunPushDbDumpToCloudTime != null && !latestNoteUpdateDateTime.isAfter(lastRunPushDbDumpToCloudTime)) {
                     return;
@@ -103,7 +151,7 @@ public class ScheduledTasks {
 
     @Scheduled(fixedRate = 43200000, initialDelay = 3720000) // every 12h or 1h02m after startup
     public void runPushUploadsToCloud() {
-        if (runPushUploadsToCloudEnabled.equals("true")) {
+        if (runPushUploadsToCloudEnabled.equals("true") && !applicationName.equals("demo")) {
             try {
                 String command = "megatools copy -u "+extStorageUser+" -p "+extStoragePassword+" -r /Root/uploads -l C:\\uploads";
                 int exitCode = commandRunner(command);
@@ -132,11 +180,6 @@ public class ScheduledTasks {
 
     @Autowired
     private ImageCleaner imageCleaner;
-
-    @EventListener(ContextRefreshedEvent.class) // at application startup
-    public void runImageCleanup() {
-        imageCleaner.cleanUnusedImages();
-    }
 
     @Component
     public static class ImageCleaner {
@@ -173,6 +216,9 @@ public class ScheduledTasks {
 
         @Autowired
         private NoteRepository noteRepository;
+
+        @Autowired
+        private NoteService noteService;
 
         private static final String URL_PATTERN = "http://localhost:8080/images/([\\w\\-. \\[\\]()]+)";
 

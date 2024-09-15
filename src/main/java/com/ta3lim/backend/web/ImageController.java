@@ -1,7 +1,7 @@
 package com.ta3lim.backend.web;
 
 import com.ta3lim.backend.domain.Image;
-import com.ta3lim.backend.repository.ImageRepository;
+import com.ta3lim.backend.repository.jpa.ImageRepository;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.PathResource;
 import org.springframework.core.io.Resource;
@@ -22,7 +22,8 @@ public class ImageController {
     @Value("${app.public-api}")
     private String publicApi;
 
-    private static final String UPLOAD_DIR = "C:\\uploads";
+    @Value("${app.upload-dir}")
+    private String uploadDir;
 
     private final ImageRepository imageRepository;
 
@@ -37,7 +38,7 @@ public class ImageController {
         }
         String originalFilename = image.getOriginalFilename().replaceAll(" ", "_");
         String imageName = UUID.randomUUID().toString() + "-" + originalFilename;
-        Path imagePath = Paths.get(UPLOAD_DIR, imageName);
+        Path imagePath = Paths.get(uploadDir, imageName);
         Files.copy(image.getInputStream(), imagePath);
         Image img = new Image(imageName);
         imageRepository.save(img);
@@ -51,7 +52,7 @@ public class ImageController {
 
         if (imageOptional.isPresent()) {
             Image image = imageOptional.get();
-            Path imagePath = Paths.get(UPLOAD_DIR, image.getImagePath());
+            Path imagePath = Paths.get(uploadDir, image.getImagePath());
 
             try {
                 Resource resource = new PathResource(imagePath);

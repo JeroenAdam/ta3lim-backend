@@ -1,4 +1,4 @@
-package com.ta3lim.backend.repository;
+package com.ta3lim.backend.repository.jpa;
 
 import com.ta3lim.backend.domain.Image;
 import org.springframework.data.jpa.repository.JpaRepository;

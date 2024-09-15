@@ -1,4 +1,4 @@
-package com.ta3lim.backend.repository;
+package com.ta3lim.backend.repository.jpa;
 
 import com.ta3lim.backend.domain.Note;
 import com.ta3lim.backend.domain.NoteStatus;
