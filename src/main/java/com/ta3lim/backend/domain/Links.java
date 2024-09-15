@@ -13,7 +13,6 @@ public class Links {
     private Long id;
 
     @ManyToOne
-
     @JoinColumn(name = "referrer", referencedColumnName = "id")
     private Note referrer;
 

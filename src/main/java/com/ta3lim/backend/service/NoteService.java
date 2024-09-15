@@ -3,11 +3,14 @@ package com.ta3lim.backend.service;
 import com.ta3lim.backend.domain.Links;
 import com.ta3lim.backend.domain.Note;
 import com.ta3lim.backend.domain.NoteStatus;
-import com.ta3lim.backend.repository.LinksRepository;
-import com.ta3lim.backend.repository.NoteRepository;
+import com.ta3lim.backend.repository.search.ElasticsearchNoteRepository;
+import com.ta3lim.backend.repository.jpa.LinksRepository;
+import com.ta3lim.backend.repository.jpa.NoteRepository;
 import com.ta3lim.backend.web.errors.NoteNotFoundException;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Service;
 
 import java.util.HashSet;
@@ -20,16 +23,22 @@ import java.util.regex.Pattern;
 @Service
 public class NoteService {
 
+    private static String URL_PATTERN = ""
+            ;
     private final NoteRepository noteRepository;
+
+    private final ElasticsearchNoteRepository elasticsearchNoteRepository;
 
     private final LinksRepository linksRepository;
 
-    private static final String URL_PATTERN = "http://localhost:3000/#note-(\\d+)";
 
     @Autowired
-    public NoteService(NoteRepository noteRepository, LinksRepository linksRepository) {
+    public NoteService(Environment environment, NoteRepository noteRepository, ElasticsearchNoteRepository elasticsearchNoteRepository, LinksRepository linksRepository) {
         this.noteRepository = noteRepository;
+        this.elasticsearchNoteRepository = elasticsearchNoteRepository;
         this.linksRepository = linksRepository;
+        String publicUrl = environment.getProperty("app.public-url");
+        this.URL_PATTERN = publicUrl + "/#note-(\\d+)";
     }
 
     public List<Note> getAllNotes() {
@@ -47,7 +56,18 @@ public class NoteService {
 
     @Transactional
     public Note createNote(Note note) {
-        return noteRepository.save(note);
+        Note savedNote = noteRepository.save(note);
+        // Duplicate existingNote into toIndexNote and remove tags
+        Note toIndexNote = new Note();
+        toIndexNote.setId(savedNote.getId());
+        toIndexNote.setTitle(savedNote.getTitle());
+        toIndexNote.setContent(savedNote.getContent());
+        toIndexNote.setUpdateDate(savedNote.getUpdateDate());
+        toIndexNote.setStatus(savedNote.getStatus());
+        toIndexNote.setTags(null); // Remove tags from toIndexNote before indexing, will send flattened below
+        toIndexNote.setTagLabels(savedNote.getTagLabels());
+        elasticsearchNoteRepository.save(toIndexNote);  // Index in Elasticsearch
+        return savedNote;
     }
 
     @Transactional
@@ -80,7 +100,9 @@ public class NoteService {
                 linksRepository.save(link);
             }
         }
-        return noteRepository.save(existingNote);
+        noteRepository.save(existingNote);
+        indexNote(existingNote);
+        return existingNote;
     }
 
     private Set<Long> buildReferrerChain(Note note) {
@@ -102,6 +124,28 @@ public class NoteService {
         } else {
             throw new NoteNotFoundException(id);
         }
+    }
+
+    @Transactional
+    public void reindexAllNotes() {
+        List<Note> allNotes = noteRepository.findAll();
+        for (Note note : allNotes) {
+            indexNote(note);
+        }
+    }
+
+    private void indexNote(Note note) {
+        Note toIndexNote = new Note();
+        toIndexNote.setId(note.getId());
+        toIndexNote.setTitle(note.getTitle());
+        toIndexNote.setContent(note.getContent());
+        toIndexNote.setUpdateDate(note.getUpdateDate());
+        toIndexNote.setStatus(note.getStatus());
+        toIndexNote.setTags(null); // Remove tags from toIndexNote before indexing
+        toIndexNote.setTagLabels(note.getTagLabels());
+        toIndexNote.setLinks(null); // Remove links from toIndexNote before indexing
+        toIndexNote.setLinkLabels(note.getLinkLabels());
+        elasticsearchNoteRepository.save(toIndexNote); // Index in Elasticsearch
     }
 
 }

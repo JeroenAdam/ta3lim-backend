@@ -1,4 +1,4 @@
-package com.ta3lim.backend.repository;
+package com.ta3lim.backend.repository.jpa;
 
 import com.ta3lim.backend.domain.Links;
 import jakarta.transaction.Transactional;

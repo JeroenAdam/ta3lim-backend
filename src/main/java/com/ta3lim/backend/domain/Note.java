@@ -3,11 +3,17 @@ package com.ta3lim.backend.domain;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
+import org.springframework.data.elasticsearch.annotations.Document;
+import org.springframework.data.elasticsearch.annotations.Field;
+import org.springframework.data.elasticsearch.annotations.FieldType;
+
 import java.time.LocalDateTime;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
 @Entity
+@Document(indexName = "#{@environment.getProperty('spring.application.name')}")
 public class Note {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -24,6 +30,14 @@ public class Note {
     @OneToMany(mappedBy = "note", cascade = CascadeType.ALL, orphanRemoval = true)
     @JsonManagedReference
     private List<Tag> tags;
+
+    @Field(type = FieldType.Text) // Index tag labels as a list of text fields in Elasticsearch
+    @Transient // This field is not persisted to the database, used by Elasticsearch
+    private List<String> tagLabels;
+
+    @Field(type = FieldType.Text)
+    @Transient
+    private List<String> linkLabels;
 
     @OneToMany(mappedBy = "referrer", cascade = CascadeType.ALL, orphanRemoval = true)
     @JsonIgnore
@@ -74,6 +88,30 @@ public class Note {
 
     public void setTags(List<Tag> tags) {
         this.tags = tags;
+    }
+
+    public List<String> getTagLabels() {
+        if (this.tags != null) {
+            return tags.stream().map(Tag::getLabel).toList(); // Flatten tags to their labels
+        }
+        return Collections.emptyList();
+    }
+
+    public void setTagLabels(List<String> tagLabels) {
+        this.tagLabels = tagLabels;
+    }
+
+    public List<String> getLinkLabels() {
+        if (this.linked != null) {
+            return linked.stream()
+                    .map(link -> link.getReferrer().id + " " + link.getReferrer().title)
+                    .toList(); // Flatten links to strings
+        }
+        return Collections.emptyList();
+    }
+
+    public void setLinkLabels(List<String> linkLabels) {
+        this.linkLabels = linkLabels;
     }
 
     public List<Links> getLinks() {
