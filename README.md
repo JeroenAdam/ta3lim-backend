@@ -186,4 +186,4 @@ In production, it's recommended not to expose your Elasticsearch instance direct
 
 ### Optional: Automatic Backups
 
-For automatic backups, you can use `megatools`. This requires a free [mega.nz](https://mega.io/?aff=LC8QgvuXn7k) account and works out-of-the-box with MySQL 9 locally installed (not Docker) on Windows. It is disabled by default but can be enabled by adding the necessary environment variables.
+For automatic backups, you can use `megatools`. This requires a free [mega.nz](https://mega.io/?aff=LC8QgvuXn7k) account and works out-of-the-box with MySQL version 9.0 or higher locally installed (not Docker) on Windows. It is disabled by default but can be enabled by adding the necessary environment variables.

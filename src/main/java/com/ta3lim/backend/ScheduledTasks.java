@@ -119,7 +119,7 @@ public class ScheduledTasks {
     public void runDbDump() {
         if (runDbDumpEnabled.equals("true") && !applicationName.equals("demo")) {
             try {
-                String command="cd \"C:\\Program Files\\MySQL\\MySQL Server 9.0\\bin\" && mysqldump -u "+dbUser+" -p"+dbPassword+" -P "+dbPort+" --no-tablespaces "+dbName+" > c:\\dumps\\pkms.sql";
+                String command="mysqldump -u "+dbUser+" -p"+dbPassword+" -P "+dbPort+" --no-tablespaces --skip-masking-policies --set-gtid-purged=OFF "+dbName+" > c:\\dumps\\pkms.sql";
                 int exitCode = commandRunner(command);
                 System.out.println("runDbDump exited with code: " + exitCode);
             } catch (Exception e) {
